@@ -150,6 +150,7 @@
     <ClCompile Include="SLBingoCore.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cstypes.h" />
     <ClInclude Include="error.h" />
     <ClInclude Include="memread.h" />
   </ItemGroup>

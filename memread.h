@@ -6,12 +6,15 @@
 #include <iostream>
 #include <format>
 #include <utility>
+#include <set>
+#include <map>
 #include <memory>
 #include <vector>
 #include "error.h"
 
 #pragma comment(lib, "psapi")
 using std::wstring;
+#undef max
 
 namespace MemRead
 {
@@ -97,7 +100,7 @@ namespace MemRead
       }
     }
 
-    wstring get_str(intptr_t address, size_t max_length) {
+    wstring get_str(intptr_t address, size_t max_length = 255) {
       if (address == -1) {
         return L"-1";
       }
@@ -124,15 +127,21 @@ namespace MemRead
   {
     std::shared_ptr<Address> ptr_;
   public:
-    Node(std::shared_ptr<Address> ptr):ptr_{std::move(ptr)} {}
-    template<typename T>
-    Node(std::shared_ptr<T> ptr):ptr_{std::move(ptr)} {}
+    Node(std::shared_ptr<Address> ptr): ptr_{std::move(ptr)} {
+    }
+
+    template <typename T>
+    Node(std::shared_ptr<T> ptr): ptr_{std::move(ptr)} {
+    }
+
     Address &operator*() const {
       return *ptr_;
     }
+
     Address *operator->() const {
       return ptr_.operator->();
     }
+
     Node operator+(ptrdiff_t rhs) const;
     Node operator[](ptrdiff_t rhs) const;
   };
@@ -171,18 +180,23 @@ namespace MemRead
     }
 
     template <typename T>
+    typename T::result_type load() {
+      return T::parse(shared_from_this());
+    }
+
+    template <typename T>
     T get() {
       return process_->get<T>(address_opt());
     }
 
-    template<typename T>
+    template <typename T>
     std::vector<T> get_array(size_t n) {
       std::vector<T> result(n);
       process_->get_array(address_opt(), n, result.data());
       return result;
     }
 
-    wstring get_str(size_t max_length) {
+    wstring get_str(size_t max_length = 255) {
       return process_->get_str(address_opt(), max_length);
     }
 
@@ -295,8 +309,16 @@ namespace MemRead
     return ptr_->next(rhs);
   }
 
-  template<typename T, typename ...Args>
-  Node make_node(Args&&... args) {
+  template <typename T, typename ...Args>
+  Node make_node(Args &&... args) {
     return Node{std::make_shared<T>(std::forward<Args>(args)...)};
   }
+
+  template <typename T>
+  struct ParserBase
+  {
+    using result_type = T;
+  };
+
+  
 }
