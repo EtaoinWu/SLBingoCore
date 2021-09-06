@@ -5,34 +5,41 @@
 #include "cstypes.h"
 #include <vector>
 
-int main() {
-  using namespace MemRead;
-  using namespace CSharpType;
-  auto process = new Process;
-  process->open_process(L"SuperliminalSteam.exe");
+using namespace MemRead;
+using namespace CSharpType;
 
-  auto save_and_checkpoint_manager =
-    (make_node<Module>(process, L"UnityPlayer.dll") + 0x17c8588)
-    [0x8][0xb0][0x28];
+void work(Process *process, Node scene, Node save_and_checkpoint_manager) {
+  string scene_name;
+  try {
+    scene_name = scene->get_astr();
+    save_and_checkpoint_manager->preload();
+  } catch (Complaint c) {
+    external_error(L"Game exited or unknown error.");
+  }
 
-  while (true) {
-    system("cls");
-    save_and_checkpoint_manager->load();
+  string load_name = "Assets/_Levels/_LiveFolder/ACT";
+  bool unsafe = scene->address_opt() == 0 ||
+    scene_name.substr(0, load_name.size()) != load_name;
 
-    auto save_game_state = save_and_checkpoint_manager[0xa0];
-    auto level_name = (save_game_state + 0x8)->load<CSharpString>();
-    auto levels_unlocked = save_and_checkpoint_manager[0x60]->get<long long>();
-    auto cp_name = (save_game_state + 0x10)->load<CSharpString>();
+  if (!unsafe) {
+    try {
+      auto save_game_state = save_and_checkpoint_manager[0xa0];
+      auto level_name = (save_game_state + 0x8)->load<CSharpString>();
+      auto levels_unlocked = save_and_checkpoint_manager[0x60]->get<long
+        long>();
+      auto cp_name = (save_game_state + 0x10)->load<CSharpString>();
+      auto timer = save_and_checkpoint_manager[0x128]->get<double>();
+      auto cp_timer = save_and_checkpoint_manager[0x134]->get<float>();
+      std::wcout << std::format(L"Level: {} ({} unlocked), CP: {}", level_name,
+                                levels_unlocked, cp_name) << std::endl;
+      std::cout << "Timer: " << timer << std::endl;
+      std::cout << "CP timer: " << cp_timer << std::endl;
+    } catch (Complaint c) {
+      std::wcerr << "Complain: " << c.wwhat() << std::endl;
+    }
+  }
 
-    std::wcout << std::format(L"Level: {} ({} unlocked), CP: {}", level_name,
-                              levels_unlocked, cp_name) << std::endl;
-
-    auto timer = save_and_checkpoint_manager[0x128]->get<double>();
-    std::cout << "Timer: " << timer << std::endl;
-
-    auto cp_timer = save_and_checkpoint_manager[0x134]->get<float>();
-    std::cout << "CP timer: " << cp_timer << std::endl;
-
+  try {
     auto collectible_status = save_and_checkpoint_manager[0x78][0x10][0x18];
     for (auto [diff, name] :
          {
@@ -73,6 +80,27 @@ int main() {
       }
       std::wcout << "]" << std::endl;
     }
+  } catch (Complaint c) {
+    std::wcerr << "Complain: " << c.wwhat() << std::endl;
+  }
+}
+
+int main() {
+  using namespace MemRead;
+  using namespace CSharpType;
+  auto process = new Process;
+  process->open_process(L"SuperliminalSteam.exe");
+
+  auto scene = (make_node<Module>(process, L"UnityPlayer.dll") + 0x180b4f8)
+    [0x48][0x10][0x0];
+
+  auto save_and_checkpoint_manager =
+    (make_node<Module>(process, L"UnityPlayer.dll") + 0x17a9300)
+    [0x8][0x8][0xc8][0x118][0x28];
+
+  while (true) {
+    system("cls");
+    work(process, scene, save_and_checkpoint_manager);
     Sleep(500);
   }
   return 0;

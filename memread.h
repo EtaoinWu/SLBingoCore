@@ -13,11 +13,15 @@
 #include "error.h"
 
 #pragma comment(lib, "psapi")
+using std::string;
 using std::wstring;
 #undef max
 
 namespace MemRead
 {
+  using ssize_t = std::make_signed_t<std::size_t>;
+  const intptr_t small_address = 0x100000;
+
   class Process
   {
     DWORD process_id_;
@@ -68,8 +72,8 @@ namespace MemRead
 
     template <typename T>
     T get(intptr_t address) {
-      if (address == -1)
-        return -1;
+      if (address < small_address)
+        complain_fmt(L"Memory read error: pointer {:x}", address);
       T buffer;
       size_t bytes_to_read = sizeof(T);
       size_t bytes_actually_read;
@@ -85,9 +89,9 @@ namespace MemRead
     }
 
     template <typename T>
-    void get_array(intptr_t address, size_t num, T *result) {
-      if (address == -1)
-        return;
+    void get_array(intptr_t address, ssize_t num, T *result) {
+      if (address < small_address)
+        complain_fmt(L"Array read error: pointer {:x}", address);
       size_t bytes_to_read = sizeof(T) * num;
       size_t bytes_actually_read;
       bool success = ReadProcessMemory(process_handle_, (LPCVOID)address,
@@ -95,14 +99,31 @@ namespace MemRead
                                        bytes_to_read,
                                        &bytes_actually_read);
       if (!success || bytes_actually_read != bytes_to_read) {
-        complain_fmt(L"Memory read error: pointer {:x}", address);
-        return;
+        complain_fmt(L"Array read error: pointer {:x}", address);
       }
     }
 
-    wstring get_str(intptr_t address, size_t max_length = 255) {
-      if (address == -1) {
-        return L"-1";
+    string get_astr(intptr_t address, ssize_t max_length = 255) {
+      if (address < small_address) {
+        complain_fmt(L"AString read error: pointer {:x}", address);
+      }
+      std::vector<char> buffer(max_length, 0);
+      size_t bytes_to_read = sizeof(char) * max_length;
+      size_t bytes_actually_read;
+      bool success = ReadProcessMemory(process_handle_, (LPCVOID)address,
+                                       buffer.data(),
+                                       bytes_to_read,
+                                       &bytes_actually_read);
+      if (!success) {
+        complain_fmt(L"AString read error: pointer {:x}", address);
+      }
+      buffer.push_back(0);
+      return string{buffer.data()};
+    }
+
+    wstring get_wstr(intptr_t address, ssize_t max_length = 255) {
+      if (address < small_address) {
+        complain_fmt(L"LString read error: pointer {:x}", address);
       }
       std::vector<wchar_t> buffer(max_length, 0);
       size_t bytes_to_read = sizeof(wchar_t) * max_length;
@@ -112,9 +133,9 @@ namespace MemRead
                                        bytes_to_read,
                                        &bytes_actually_read);
       if (!success) {
-        complain_fmt(L"String read error: pointer {:x}", address);
-        return L"-1";
+        complain_fmt(L"LString read error: pointer {:x}", address);
       }
+      buffer.push_back(0);
       return wstring{buffer.data()};
     }
   };
@@ -167,7 +188,7 @@ namespace MemRead
       return loaded_address_ != 0;
     }
 
-    intptr_t load() {
+    intptr_t preload() {
       return loaded_address_ = address();
     }
 
@@ -190,14 +211,18 @@ namespace MemRead
     }
 
     template <typename T>
-    std::vector<T> get_array(size_t n) {
+    std::vector<T> get_array(ssize_t n) {
       std::vector<T> result(n);
       process_->get_array(address_opt(), n, result.data());
       return result;
     }
 
-    wstring get_str(size_t max_length = 255) {
-      return process_->get_str(address_opt(), max_length);
+    string get_astr(ssize_t max_length = 255) {
+      return process_->get_astr(address_opt(), max_length);
+    }
+
+    wstring get_wstr(ssize_t max_length = 255) {
+      return process_->get_wstr(address_opt(), max_length);
     }
 
     Node plus(ptrdiff_t offset);
@@ -225,7 +250,7 @@ namespace MemRead
       if (EnumProcessModules(process_->handle(), h_modules,
                              c_modules / sizeof(HMODULE),
                              &c_modules)) {
-        for (size_t i = 0; i < c_modules / sizeof(HMODULE); i++) {
+        for (ssize_t i = 0; i < c_modules / sizeof(HMODULE); i++) {
           if (WCHAR sz_buf[50]; GetModuleBaseName(
             process_->handle(), h_modules[i], sz_buf,
             sizeof(sz_buf))) {
@@ -319,6 +344,4 @@ namespace MemRead
   {
     using result_type = T;
   };
-
-  
 }

@@ -8,7 +8,7 @@ namespace CSharpType
   struct CSharpString : ParserBase<wstring>
   {
     static result_type parse(const Node &x) {
-      return x[0x14]->get_str();
+      return x[0x14]->get_wstr();
     }
   };
 
@@ -27,7 +27,7 @@ namespace CSharpType
       auto length = std::max(x[0x30]->get<int>(), x[0x34]->get<int>());
       std::set<wstring> result;
       auto base = x[0x18];
-      base->load();
+      base->preload();
       for (int i = 0; i < length; ++i) {
         result.insert(base[0x28 + i * 0x10]->load<CSharpString>());
       }
@@ -41,7 +41,7 @@ namespace CSharpType
       auto length = x[0x40]->get<int>();
       std::map<wstring, std::set<wstring>> result;
       auto base = x[0x18];
-      base->load();
+      base->preload();
       for (int i = 0; i < length; ++i) {
         result[base[0x28 + i * 0x18]->load<CSharpString>()]
           = base[0x30 + i * 0x18]->load<CSharpSetString>();

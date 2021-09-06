@@ -2,8 +2,19 @@
 #include <iostream>
 #include <format>
 
+class Complaint final : public std::exception
+{
+  std::wstring msg_;
+public:
+  Complaint(std::wstring msg):msg_{std::move(msg)} {}
+  const std::wstring &wwhat() const {
+    return msg_;
+  }
+};
+
 void complain(const std::wstring &msg) {
-  std::wcerr << L"Complain: " << msg << std::endl;
+  throw Complaint{msg};
+  // std::wcerr << L"Complain: " << msg << std::endl;
 }
 
 template<typename ...Args>
