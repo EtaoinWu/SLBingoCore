@@ -147,12 +147,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ReportGenerator.cpp" />
     <ClCompile Include="SLBingoCore.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cstypes.h" />
     <ClInclude Include="error.h" />
+    <ClInclude Include="httplib.h" />
+    <ClInclude Include="json.hpp" />
     <ClInclude Include="memread.h" />
+    <ClInclude Include="ReportGenerator.h" />
+    <ClInclude Include="unsafe.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

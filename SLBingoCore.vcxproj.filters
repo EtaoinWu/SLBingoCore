@@ -18,6 +18,9 @@
     <ClCompile Include="SLBingoCore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ReportGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="memread.h">
@@ -27,6 +30,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="cstypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="httplib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unsafe.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ReportGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -34,27 +34,38 @@ namespace MemRead
       return process_handle_;
     }
 
+    bool exist() const {
+      return process_id_ && process_handle_;
+    }
+
+    void close() {
+      if (!exist()) return;
+      process_id_ = 0;
+      CloseHandle(process_handle_);
+      process_handle_ = nullptr;
+    }
+
     static DWORD get_process_id(const WCHAR *processName) {
       SetLastError(0);
       PROCESSENTRY32 pe32;
-      HANDLE hSnapshot = nullptr;
       GetLastError();
       pe32.dwSize = sizeof(PROCESSENTRY32);
-      hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+      HANDLE h_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
-      if (Process32First(hSnapshot, &pe32)) {
+      if (Process32First(h_snapshot, &pe32)) {
         do {
           if (wcscmp(pe32.szExeFile, processName) == 0)
             break;
-        } while (Process32Next(hSnapshot, &pe32));
+        } while (Process32Next(h_snapshot, &pe32));
       }
 
-      if (hSnapshot != INVALID_HANDLE_VALUE)
-        CloseHandle(hSnapshot);
+      if (h_snapshot != INVALID_HANDLE_VALUE)
+        CloseHandle(h_snapshot);
       int err = GetLastError();
       //std::cout << err << std::endl;
-      if (err != 0)
+      if (err != 0) {
         return 0;
+      }
       return pe32.th32ProcessID;
     }
 
@@ -103,7 +114,7 @@ namespace MemRead
       }
     }
 
-    string get_astr(intptr_t address, ssize_t max_length = 255) {
+    string get_astr(intptr_t address, ssize_t max_length = 255) const {
       if (address < small_address) {
         complain_fmt(L"AString read error: pointer {:x}", address);
       }
@@ -121,7 +132,7 @@ namespace MemRead
       return string{buffer.data()};
     }
 
-    wstring get_wstr(intptr_t address, ssize_t max_length = 255) {
+    wstring get_wstr(intptr_t address, ssize_t max_length = 255) const {
       if (address < small_address) {
         complain_fmt(L"LString read error: pointer {:x}", address);
       }
@@ -253,11 +264,9 @@ namespace MemRead
         for (ssize_t i = 0; i < c_modules / sizeof(HMODULE); i++) {
           if (WCHAR sz_buf[50]; GetModuleBaseName(
             process_->handle(), h_modules[i], sz_buf,
-            sizeof(sz_buf))) {
-            if (name_.compare(sz_buf) == 0) {
-              dw_base = reinterpret_cast<intptr_t>(h_modules[i]);
-              break;
-            }
+            sizeof sz_buf) && name_.compare(sz_buf) == 0) {
+            dw_base = reinterpret_cast<intptr_t>(h_modules[i]);
+            break;
           }
         }
       }

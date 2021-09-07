@@ -12,7 +12,17 @@ public:
   }
 };
 
-void complain(const std::wstring &msg) {
+class ExternalError final : public std::exception
+{
+  std::wstring msg_;
+public:
+  ExternalError(std::wstring msg):msg_{std::move(msg)} {}
+  const std::wstring &wwhat() const {
+    return msg_;
+  }
+};
+
+inline void complain(const std::wstring &msg) {
   throw Complaint{msg};
   // std::wcerr << L"Complain: " << msg << std::endl;
 }
@@ -22,9 +32,8 @@ void complain_fmt(const Args& ... args) {
   complain(std::format(args...));
 }
 
-void external_error(const std::wstring &msg) {
-  std::wcerr << L"External error: " << msg << std::endl;
-  exit(-1);
+inline void external_error(const std::wstring &msg) {
+  throw ExternalError{msg};
 }
 
 template<typename ...Args>
