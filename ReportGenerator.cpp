@@ -126,13 +126,24 @@ json ReportGenerator::operator()() {
   json result;
   try {
     if (!process_->exist()) {
-      process_->open_process(L"SuperliminalSteam.exe");
+      process_->open_process(untrunk_string(config_.game_process));
       scene_ =
         (make_node<Module>(process_, L"UnityPlayer.dll") + 0x180b4f8)
         [0x48][0x10][0x0];
-      save_and_checkpoint_manager_ =
-        (make_node<Module>(process_, L"UnityPlayer.dll") + 0x17a9300)
-        [0x8][0x8][0xc8][0x118][0x28];
+
+      switch (config_.method) {
+      case Config::PointerMethod::experimental:
+        save_and_checkpoint_manager_ =
+          (make_node<Module>(process_, L"UnityPlayer.dll") + 0x17a9300)
+          [0x8][0x8][0xc8][0x118][0x28];
+        break;
+
+      case Config::PointerMethod::stable:
+        save_and_checkpoint_manager_ =
+          (make_node<Module>(process_, L"UnityPlayer.dll") + 0x17c8588)
+          [0x8][0xb0][0x28];
+        break;
+      }
     }
     result = work();
   } catch (const ExternalError &e) {

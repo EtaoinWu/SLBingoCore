@@ -147,10 +147,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Config.cpp" />
     <ClCompile Include="ReportGenerator.cpp" />
     <ClCompile Include="SLBingoCore.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Config.h" />
     <ClInclude Include="cstypes.h" />
     <ClInclude Include="error.h" />
     <ClInclude Include="httplib.h" />
