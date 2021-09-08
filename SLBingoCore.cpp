@@ -1,15 +1,17 @@
 #include <iomanip>
 #include <iostream>
 #include "ReportGenerator.h"
+#include "httplib.h"
 
 int main() {
   ReportGenerator gen;
+  httplib::Server svr;
 
-  while (true) {
-    std::wcout << "===================================" << std::endl;
-    
-    std::cout << std::setw(2) << gen() << std::endl;
-    Sleep(500);
-  }
+  svr.Get("/api", [&gen](const httplib::Request &req,httplib::Response &res)
+  {
+    res.set_content(gen().dump(2), "application/json");
+  });
+
+  svr.listen("127.0.0.1", 11451);
   return 0;
 }

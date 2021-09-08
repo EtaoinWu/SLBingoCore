@@ -68,15 +68,12 @@ json ReportGenerator::achievement_info() const {
 json ReportGenerator::challenge_mode_info() const {
   auto mini_challenge_status = save_and_checkpoint_manager_
     [0x90][0x10]->load<MiniChallengeDict>();
-  return to_vector(
-    mini_challenge_status | std::views::transform(
-      [](std::pair<wstring, std::set<wstring>> x)
-      {
-        return std::make_pair(trunk_string(x.first),
-                              to_vector(
-                                x.second | std::views::transform(
-                                  trunk_string)));
-      }));
+  json result;
+  for (const auto &[key, value] : mini_challenge_status) {
+    result[trunk_string(key)] = to_vector(
+      value | std::views::transform(trunk_string));
+  }
+  return result;
 }
 
 json ReportGenerator::work() const {

@@ -1,4 +1,5 @@
 #pragma once
+#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <string>
@@ -11,6 +12,7 @@
 #include <memory>
 #include <vector>
 #include "error.h"
+#include <mutex>
 
 #pragma comment(lib, "psapi")
 using std::string;
@@ -26,8 +28,14 @@ namespace MemRead
   {
     DWORD process_id_;
     HANDLE process_handle_;
+    std::mutex process_working_;
+
   public:
     Process(): process_id_{0}, process_handle_{nullptr} {
+    }
+
+    ~Process() {
+      close();     
     }
 
     HANDLE handle() const {
@@ -39,6 +47,7 @@ namespace MemRead
     }
 
     void close() {
+      std::lock_guard guard(process_working_);
       if (!exist()) return;
       process_id_ = 0;
       CloseHandle(process_handle_);
@@ -70,6 +79,7 @@ namespace MemRead
     }
 
     void open_process(const wstring &name) {
+      std::lock_guard guard(process_working_);
       process_id_ = get_process_id(name.c_str());
       if (process_id_ == 0) {
         external_error(L"Cannot find process with name " + name);
@@ -83,6 +93,9 @@ namespace MemRead
 
     template <typename T>
     T get(intptr_t address) {
+      std::lock_guard guard(process_working_);
+      if (!exist())
+        complain(L"Process not open");
       if (address < small_address)
         complain_fmt(L"Memory read error: pointer {:x}", address);
       T buffer;
@@ -101,6 +114,9 @@ namespace MemRead
 
     template <typename T>
     void get_array(intptr_t address, ssize_t num, T *result) {
+      std::lock_guard guard(process_working_);
+      if (!exist())
+        complain(L"Process not open");
       if (address < small_address)
         complain_fmt(L"Array read error: pointer {:x}", address);
       size_t bytes_to_read = sizeof(T) * num;
@@ -114,7 +130,10 @@ namespace MemRead
       }
     }
 
-    string get_astr(intptr_t address, ssize_t max_length = 255) const {
+    string get_astr(intptr_t address, ssize_t max_length = 255) {
+      std::lock_guard guard(process_working_);
+      if (!exist())
+        complain(L"Process not open");
       if (address < small_address) {
         complain_fmt(L"AString read error: pointer {:x}", address);
       }
@@ -132,7 +151,10 @@ namespace MemRead
       return string{buffer.data()};
     }
 
-    wstring get_wstr(intptr_t address, ssize_t max_length = 255) const {
+    wstring get_wstr(intptr_t address, ssize_t max_length = 255) {
+      std::lock_guard guard(process_working_);
+      if (!exist())
+        complain(L"Process not open");
       if (address < small_address) {
         complain_fmt(L"LString read error: pointer {:x}", address);
       }
