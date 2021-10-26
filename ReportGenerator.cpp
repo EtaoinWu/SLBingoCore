@@ -188,7 +188,7 @@ json ReportGenerator::operator()() {
     return cache_;
   }
   json result;
-  result["ver"] = "0.0.2";
+  result["ver"] = "0.0.3";
   try {
     if (!process_->exist()) {
       process_->open_process(untrunk_string(config_.game_process));

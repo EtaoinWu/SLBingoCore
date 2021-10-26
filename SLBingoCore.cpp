@@ -58,6 +58,8 @@ int main() {
 
   ReportGenerator gen{cfg};
 
+  std::cout << gen().dump() << std::endl;
+
   httplib::Server svr;
 
   svr.Get("/api", [&gen](const httplib::Request &req, httplib::Response &res)

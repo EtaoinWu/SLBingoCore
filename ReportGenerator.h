@@ -43,7 +43,7 @@ public:
     vague_base_(make_node<FixedAddress>(process_, 0)),
     sacm_backup_(make_node<FixedAddress>(process_, 0)),
     cache_(nullptr),
-    cached_time_(std::chrono::system_clock::now()) {
+    cached_time_(std::chrono::system_clock::now() - std::chrono::seconds{1}) {
   }
 
   ReportGenerator(const ReportGenerator &rhs) = delete;
