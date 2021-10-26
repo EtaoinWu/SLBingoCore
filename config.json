@@ -1,8 +1,10 @@
 {
+  "save_folder": "C:/Users/",
   "game_process": "SuperliminalSteam.exe",
+  "cache_time": 0.05,
   "listen": {
     "host": "127.0.0.1",
     "port": 11451
   },
-  "method": "experimental"
+  "method": "stable"
 }

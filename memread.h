@@ -260,6 +260,7 @@ namespace MemRead
 
     Node plus(ptrdiff_t offset);
     Node next(ptrdiff_t offset);
+    Node store();
   };
 
   class Module final : public Address
@@ -356,6 +357,11 @@ namespace MemRead
   inline Node Address::next(ptrdiff_t offset) {
     return std::make_shared<AddressOffset>(shared_from_this(), offset);
   }
+
+  inline Node Address::store() {
+    return std::make_shared<FixedAddress>(this->process_, address());
+  }
+
 
   inline Node Node::operator+(ptrdiff_t rhs) const {
     return ptr_->plus(rhs);
