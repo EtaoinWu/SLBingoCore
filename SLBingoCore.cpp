@@ -71,6 +71,7 @@ int main() {
 
   if (!svr.listen(cfg.host.c_str(), cfg.port)) {
     std::cout << "port " << cfg.port << " in use." << std::endl;
+    system("pause");
     return -1;
   }
   return 0;
