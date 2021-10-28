@@ -38,5 +38,5 @@ jobs:
         prerelease: false
         files: |
           LICENSE
-          x64\Release\*.exe
+          x64/Release/*.exe
 
