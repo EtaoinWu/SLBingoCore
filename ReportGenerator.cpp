@@ -11,11 +11,11 @@ using namespace CSharpType;
 
 json ReportGenerator::level_info() const {
   json result;
-  const auto save_game_state = save_and_checkpoint_manager_[0xa0];
-  const auto level_name = (save_game_state + 0x8)->load<CSharpString>();
+  const auto save_game_state = save_and_checkpoint_manager_[0xb0];
+  const auto level_name = (save_game_state + 0x0)->load<CSharpString>();
   auto levels_unlocked = save_and_checkpoint_manager_[0x60]
     ->get<long long>();
-  const auto cp_name = (save_game_state + 0x10)->load<CSharpString>();
+  const auto cp_name = (save_game_state + 0x8)->load<CSharpString>();
   return {
     {"current", trunk_string(level_name)},
     {"n_unlocked", levels_unlocked},
@@ -24,8 +24,8 @@ json ReportGenerator::level_info() const {
 }
 
 json ReportGenerator::timer_info() const {
-  auto timer = save_and_checkpoint_manager_[0x128]->get<double>();
-  auto cp_timer = save_and_checkpoint_manager_[0x134]->get<float>();
+  auto timer = save_and_checkpoint_manager_[0x130]->get<double>();
+  auto cp_timer = save_and_checkpoint_manager_[0x13c]->get<float>();
   return {
     {"igt", timer},
     {"cp_timer", cp_timer}
@@ -164,8 +164,8 @@ void ReportGenerator::work(json &result) {
   if (const bool unsafe = scene_->address_opt() == 0 ||
     scene_name.substr(0, load_name.size()) != load_name; !unsafe) {
     try {
-      result["level"] = level_info();
       result["timer"] = timer_info();
+      result["level"] = level_info();
     } catch (const Complaint &c) {
       std::wcerr << "Level Complain: " << c.wwhat() <<
         ", probably level restarting" << std::endl;
@@ -188,7 +188,7 @@ json ReportGenerator::operator()() {
     return cache_;
   }
   json result;
-  result["ver"] = "0.0.3";
+  result["ver"] = "0.0.5.2021.11.5";
   try {
     if (!process_->exist()) {
       process_->open_process(untrunk_string(config_.game_process));
