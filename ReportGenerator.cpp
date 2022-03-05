@@ -117,14 +117,14 @@ void ReportGenerator::work(json &result) {
 
   try {
     save_and_checkpoint_manager_ =
-      (make_node<Module>(process_, L"UnityPlayer.dll") + 0x17a9300)
-      [0x8][0x8][0xc8][0x118][0x28];
+      (make_node<Module>(process_, L"UnityPlayer.dll") + 0x17D9BA0)
+      [0x8][0x8][0xD8][0x118][0x28];
     save_and_checkpoint_manager_->preload();
     sanity_check(save_and_checkpoint_manager_);
   } catch (const Complaint &c) {
     try {
       save_and_checkpoint_manager_ =
-        (make_node<Module>(process_, L"UnityPlayer.dll") + 0x17c8588)
+        (make_node<Module>(process_, L"UnityPlayer.dll") + 0x17f9d28)
         [0x8][0xb0][0x28];
       save_and_checkpoint_manager_->preload();
       sanity_check(save_and_checkpoint_manager_);
@@ -188,13 +188,13 @@ json ReportGenerator::operator()() {
     return cache_;
   }
   json result;
-  result["ver"] = "0.0.5.2021.11.5";
+  result["ver"] = "0.0.5.2022.2.20";
   try {
     if (!process_->exist()) {
       process_->open_process(untrunk_string(config_.game_process));
       auto dll = make_node<Module>(process_, L"UnityPlayer.dll");
-      scene_ = (dll + 0x180b4f8)[0x48][0x10][0x0];
-      vague_base_ = (dll + 0x017C8358)[0xA8][0xD8][0x110][0x30][0xA8][0x28];
+      scene_ = (dll + 0x183cf10)[0x48][0x10][0x0];
+      vague_base_ = (dll + 0x17D9BA0)[0][0x1F8][0x188][0x1D0][0x78][0x10][0x198];
     }
     work(result);
   } catch (const ExternalError &e) {
