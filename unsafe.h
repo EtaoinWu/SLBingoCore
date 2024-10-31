@@ -3,11 +3,11 @@
 #include <string>
 #include <vector>
 
-inline std::string trunk_string(const std::wstring &s) {
+inline std::string trunk_string(std::wstring_view s) {
   return std::string(s.begin(), s.end());
 }
 
-inline std::wstring untrunk_string(const std::string &s) {
+inline std::wstring untrunk_string(std::string_view s) {
   return std::wstring(s.begin(), s.end());
 }
 

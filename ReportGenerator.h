@@ -8,6 +8,8 @@
 using namespace MemRead;
 using namespace nlohmann;
 
+struct PointerInfo;
+
 class ReportGenerator
 {
   Config config_;
@@ -17,6 +19,7 @@ class ReportGenerator
   Node vague_base_;
   Node sacm_backup_;
   json cache_;
+  std::shared_ptr<PointerInfo> pointer_info_;
   std::chrono::time_point<std::chrono::system_clock> cached_time_;
 
   [[nodiscard]] json level_info() const;

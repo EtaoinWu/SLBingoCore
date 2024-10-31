@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <string>
+#include <string_view>
 #include <psapi.h>
 #include <iostream>
 #include <format>
@@ -12,11 +13,15 @@
 #include <memory>
 #include <vector>
 #include "error.h"
+#include "unsafe.h"
 #include <mutex>
 
 #pragma comment(lib, "psapi")
 using std::string;
 using std::wstring;
+using namespace std::string_literals;
+using namespace std::string_view_literals;
+
 #undef max
 
 namespace MemRead
@@ -82,11 +87,11 @@ namespace MemRead
       std::lock_guard guard(process_working_);
       process_id_ = get_process_id(name.c_str());
       if (process_id_ == 0) {
-        external_error(L"Cannot find process with name " + name);
+        external_error_fmt(L"Cannot find process with name {}"sv, name);
       }
       process_handle_ = OpenProcess(PROCESS_ALL_ACCESS, false, process_id_);
       if (process_handle_ == nullptr) {
-        external_error_fmt(L"Cannot open process with name {}, pid {}",
+        external_error_fmt(L"Cannot open process with name {}, pid {}"sv,
                            name, process_id_);
       }
     }
@@ -97,7 +102,7 @@ namespace MemRead
       if (!exist())
         complain(L"Process not open");
       if (address < small_address)
-        complain_fmt(L"Memory read error: pointer {:x}", address);
+        complain_fmt(L"Memory read error: pointer {:x}"sv, address);
       T buffer;
       size_t bytes_to_read = sizeof(T);
       size_t bytes_actually_read;
@@ -106,7 +111,7 @@ namespace MemRead
                                        bytes_to_read,
                                        &bytes_actually_read);
       if (!success || bytes_actually_read != bytes_to_read) {
-        complain_fmt(L"Memory read error: pointer {:x}", address);
+        complain_fmt(L"Memory read error: pointer {:x}"sv, address);
         return -1;
       }
       return buffer;
@@ -118,7 +123,7 @@ namespace MemRead
       if (!exist())
         complain(L"Process not open");
       if (address < small_address)
-        complain_fmt(L"Array read error: pointer {:x}", address);
+        complain_fmt(L"Array read error: pointer {:x}"sv, address);
       size_t bytes_to_read = sizeof(T) * num;
       size_t bytes_actually_read;
       bool success = ReadProcessMemory(process_handle_, (LPCVOID)address,
@@ -126,7 +131,7 @@ namespace MemRead
                                        bytes_to_read,
                                        &bytes_actually_read);
       if (!success || bytes_actually_read != bytes_to_read) {
-        complain_fmt(L"Array read error: pointer {:x}", address);
+        complain_fmt(L"Array read error: pointer {:x}"sv, address);
       }
     }
 
@@ -135,7 +140,7 @@ namespace MemRead
       if (!exist())
         complain(L"Process not open");
       if (address < small_address) {
-        complain_fmt(L"AString read error: pointer {:x}", address);
+        complain_fmt(L"AString read error: pointer {:x}"sv, address);
       }
       std::vector<char> buffer(max_length, 0);
       size_t bytes_to_read = sizeof(char) * max_length;
@@ -145,7 +150,7 @@ namespace MemRead
                                        bytes_to_read,
                                        &bytes_actually_read);
       if (!success) {
-        complain_fmt(L"AString read error: pointer {:x}", address);
+        complain_fmt(L"AString read error: pointer {:x}"sv, address);
       }
       buffer.push_back(0);
       return string{buffer.data()};
@@ -154,9 +159,9 @@ namespace MemRead
     wstring get_wstr(intptr_t address, ssize_t max_length = 255) {
       std::lock_guard guard(process_working_);
       if (!exist())
-        complain(L"Process not open");
+        complain(L"Process not open"sv);
       if (address < small_address) {
-        complain_fmt(L"LString read error: pointer {:x}", address);
+        complain_fmt(L"LString read error: pointer {:x}"sv, address);
       }
       std::vector<wchar_t> buffer(max_length, 0);
       size_t bytes_to_read = sizeof(wchar_t) * max_length;
@@ -166,7 +171,7 @@ namespace MemRead
                                        bytes_to_read,
                                        &bytes_actually_read);
       if (!success) {
-        complain_fmt(L"LString read error: pointer {:x}", address);
+        complain_fmt(L"LString read error: pointer {:x}"sv, address);
       }
       buffer.push_back(0);
       return wstring{buffer.data()};
@@ -198,6 +203,10 @@ namespace MemRead
 
     Node operator+(ptrdiff_t rhs) const;
     Node operator[](ptrdiff_t rhs) const;
+    template<std::ranges::range R>
+    Node operator()(const R & v) const;
+    template<typename T, std::ranges::range R>
+    Node operator()(const std::pair<T, R> &v) const;
   };
 
   class Address : public std::enable_shared_from_this<Address>
@@ -258,6 +267,8 @@ namespace MemRead
       return process_->get_wstr(address_opt(), max_length);
     }
 
+    virtual string describe() const = 0;
+
     Node plus(ptrdiff_t offset);
     Node next(ptrdiff_t offset);
     Node store();
@@ -272,6 +283,36 @@ namespace MemRead
     }
 
     ~Module() override = default;
+
+    size_t module_size()
+    {
+      HMODULE *h_modules = nullptr;
+      DWORD c_modules;
+      size_t dw_size = 0;
+
+      EnumProcessModules(process_->handle(), h_modules, 0, &c_modules);
+      h_modules = new HMODULE[c_modules / sizeof(HMODULE)];
+
+      if (EnumProcessModules(process_->handle(), h_modules,
+        c_modules / sizeof(HMODULE),
+        &c_modules)) {
+        for (ssize_t i = 0; i < c_modules / sizeof(HMODULE); i++) {
+          if (WCHAR sz_buf[50]; GetModuleBaseName(
+            process_->handle(), h_modules[i], sz_buf,
+            sizeof sz_buf) && name_.compare(sz_buf) == 0) {
+            MODULEINFO mi;
+            GetModuleInformation(process_->handle(), h_modules[i], &mi,
+              sizeof mi);
+            dw_size = mi.SizeOfImage;
+
+            break;
+          }
+        }
+      }
+
+      delete[] h_modules;
+      return dw_size;
+    }
 
     intptr_t address() override {
       HMODULE *h_modules = nullptr;
@@ -289,6 +330,7 @@ namespace MemRead
             process_->handle(), h_modules[i], sz_buf,
             sizeof sz_buf) && name_.compare(sz_buf) == 0) {
             dw_base = reinterpret_cast<intptr_t>(h_modules[i]);
+
             break;
           }
         }
@@ -296,6 +338,11 @@ namespace MemRead
 
       delete[] h_modules;
       return dw_base;
+    }
+
+    string describe() const override
+    {
+      return std::format("Module {}"sv, trunk_string(name_));
     }
   };
 
@@ -311,6 +358,11 @@ namespace MemRead
 
     intptr_t address() override {
       return address_;
+    }
+
+    string describe() const override
+    {
+      return std::format("Fixed {:x}"sv, address_);
     }
   };
 
@@ -330,6 +382,11 @@ namespace MemRead
     intptr_t address() override {
       return parent_->address() + offset_;
     }
+
+    string describe() const override
+    {
+      return std::format("({} + {:x})"sv, parent_->describe(), offset_);
+    }
   };
 
   class AddressOffset : public Address
@@ -347,6 +404,11 @@ namespace MemRead
 
     intptr_t address() override {
       return parent_->get<intptr_t>() + offset_;
+    }
+
+    string describe() const override
+    {
+      return std::format("{}[{:x}]"sv, parent_->describe(), offset_);
     }
   };
 
@@ -369,6 +431,26 @@ namespace MemRead
 
   inline Node Node::operator[](ptrdiff_t rhs) const {
     return ptr_->next(rhs);
+  }
+
+  template<std::ranges::range R>
+  inline Node Node::operator()(const R &v) const {
+    Node result = (*this);
+    for (auto &&i : v) {
+      result = result[i];
+    }
+    return result;
+  }
+
+  template<typename T, std::ranges::range R>
+  inline Node Node::operator()(const std::pair<T, R> &v) const
+  {
+    Node result = (*this);
+    result = result + v.first;
+    for (auto &&i : v.second) {
+      result = result[i];
+    }
+    return result;
   }
 
   template <typename T, typename ...Args>
